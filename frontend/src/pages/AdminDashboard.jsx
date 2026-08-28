@@ -30,14 +30,17 @@ const ServiceEditor = ({ service, onSaved }) => {
     try {
       toast.info("Mengunggah foto...");
       const url = await uploadImage(file);
-      set("gallery", [...(form.gallery || []), url]);
-      toast.success("Foto ditambahkan. Jangan lupa klik Simpan.");
+      set("gallery", [...(form.gallery || []), { url, caption_id: "", caption_en: "" }]);
+      toast.success("Foto ditambahkan. Isi keterangan lalu klik Simpan.");
     } catch (err) {
       toast.error(formatApiErrorDetail(err.response?.data?.detail));
     } finally {
       e.target.value = "";
     }
   };
+
+  const setCaption = (i, field, value) =>
+    set("gallery", form.gallery.map((g, j) => (j === i ? { ...g, [field]: value } : g)));
 
   const save = async () => {
     setSaving(true);
@@ -104,18 +107,34 @@ const ServiceEditor = ({ service, onSaved }) => {
           </button>
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleGalleryUpload} data-testid="gallery-file-input" />
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {(form.gallery || []).map((url, i) => (
-            <div key={i} className="relative group">
-              <img src={resolveUrl(url)} alt={`Galeri ${i + 1}`} className="w-full aspect-[3/2] object-cover rounded border" />
-              <button
-                data-testid={`gallery-delete-${i}`}
-                onClick={() => set("gallery", form.gallery.filter((_, j) => j !== i))}
-                className="absolute top-1.5 right-1.5 bg-red-600 text-white p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                title="Hapus foto"
-              >
-                <Trash2 size={14} />
-              </button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          {(form.gallery || []).map((g, i) => (
+            <div key={i} className="border rounded-lg p-3 space-y-2 bg-gray-50">
+              <div className="relative group">
+                <img src={resolveUrl(g.url)} alt={`Galeri ${i + 1}`} className="w-full aspect-[3/2] object-cover rounded border" />
+                <button
+                  data-testid={`gallery-delete-${i}`}
+                  onClick={() => set("gallery", form.gallery.filter((_, j) => j !== i))}
+                  className="absolute top-1.5 right-1.5 bg-red-600 text-white p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Hapus foto"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+              <input
+                data-testid={`gallery-caption-id-${i}`}
+                value={g.caption_id || ""}
+                onChange={(e) => setCaption(i, "caption_id", e.target.value)}
+                placeholder="Keterangan (Bahasa Indonesia)"
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#F5A742]"
+              />
+              <input
+                data-testid={`gallery-caption-en-${i}`}
+                value={g.caption_en || ""}
+                onChange={(e) => setCaption(i, "caption_en", e.target.value)}
+                placeholder="Caption (English)"
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#F5A742]"
+              />
             </div>
           ))}
           {(form.gallery || []).length === 0 && (

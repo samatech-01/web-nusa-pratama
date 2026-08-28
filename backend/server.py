@@ -134,11 +134,17 @@ class ChangePasswordInput(BaseModel):
     new_password: str
 
 
+class GalleryItem(BaseModel):
+    url: str
+    caption_id: str = ""
+    caption_en: str = ""
+
+
 class ServiceUpdate(BaseModel):
     description_en: Optional[str] = None
     description_id: Optional[str] = None
     customers: Optional[List[str]] = None
-    gallery: Optional[List[str]] = None
+    gallery: Optional[List[GalleryItem]] = None
 
 
 class SettingsUpdate(BaseModel):
@@ -217,13 +223,15 @@ async def update_service(service_key: str, body: ServiceUpdate, user: dict = Dep
     if not existing:
         raise HTTPException(status_code=404, detail="Service not found")
     if "gallery" in updates:
-        removed = set(existing.get("gallery", [])) - set(updates["gallery"])
+        old_urls = {g["url"] if isinstance(g, dict) else g for g in existing.get("gallery", [])}
+        new_urls = {g["url"] for g in updates["gallery"]}
+        removed = old_urls - new_urls
         removed_ids = [u.split("/api/files/")[1] for u in removed if u.startswith("/api/files/")]
         if removed_ids:
             settings = await db.settings.find_one({"key": "site"}) or {}
             still_used = {settings.get("nib_image_url", "")}
             async for svc in db.services.find({"key": {"$ne": service_key}}, {"gallery": 1}):
-                still_used.update(svc.get("gallery", []))
+                still_used.update(g["url"] if isinstance(g, dict) else g for g in svc.get("gallery", []))
             for fid in removed_ids:
                 if f"/api/files/{fid}" not in still_used:
                     await db.files.update_one({"id": fid}, {"$set": {"is_deleted": True}})
@@ -306,8 +314,12 @@ DEFAULT_SERVICES = [
             "Perkantoran & event korporat — Kota Balikpapan",
         ],
         "gallery": [
-            "https://static.prod-images.emergentagent.com/jobs/e3147f0b-4e58-4e9a-a73b-2f2e410a807b/images/626e29a99963e4864d7fcb1388dbce695da70acf236e75c3dab2165fde5a15ae.jpeg",
-            "https://static.prod-images.emergentagent.com/jobs/e3147f0b-4e58-4e9a-a73b-2f2e410a807b/images/eb4e13cb87a751e32b3e91b7d99c37fe072fa0302d69370feb6f428cca43955f.jpeg",
+            {"url": "https://static.prod-images.emergentagent.com/jobs/e3147f0b-4e58-4e9a-a73b-2f2e410a807b/images/626e29a99963e4864d7fcb1388dbce695da70acf236e75c3dab2165fde5a15ae.jpeg",
+             "caption_id": "Layanan prasmanan katering industri untuk karyawan site",
+             "caption_en": "Industrial buffet catering service for site employees"},
+            {"url": "https://static.prod-images.emergentagent.com/jobs/e3147f0b-4e58-4e9a-a73b-2f2e410a807b/images/eb4e13cb87a751e32b3e91b7d99c37fe072fa0302d69370feb6f428cca43955f.jpeg",
+             "caption_id": "Penyiapan paket makanan (meal box) di dapur higienis",
+             "caption_en": "Packed meal preparation in a hygienic kitchen"},
         ],
     },
     {
@@ -322,8 +334,12 @@ DEFAULT_SERVICES = [
             "Instansi & perkantoran — Balikpapan",
         ],
         "gallery": [
-            "https://static.prod-images.emergentagent.com/jobs/e3147f0b-4e58-4e9a-a73b-2f2e410a807b/images/50f4c5716cf4ac0f57d2b1166023d6bedf127eccd83a63c0fd3ae664d8a0580f.jpeg",
-            "https://static.prod-images.emergentagent.com/jobs/e3147f0b-4e58-4e9a-a73b-2f2e410a807b/images/607f00b8c819be4eb529204f8d8bbfb5c2a312995935c82d3296107381ef6e00.jpeg",
+            {"url": "https://static.prod-images.emergentagent.com/jobs/e3147f0b-4e58-4e9a-a73b-2f2e410a807b/images/50f4c5716cf4ac0f57d2b1166023d6bedf127eccd83a63c0fd3ae664d8a0580f.jpeg",
+             "caption_id": "Pengecekan barang pengadaan di gudang",
+             "caption_en": "Checking procured goods in the warehouse"},
+            {"url": "https://static.prod-images.emergentagent.com/jobs/e3147f0b-4e58-4e9a-a73b-2f2e410a807b/images/607f00b8c819be4eb529204f8d8bbfb5c2a312995935c82d3296107381ef6e00.jpeg",
+             "caption_id": "Penataan dan pendataan stok peralatan safety",
+             "caption_en": "Arranging and recording safety equipment stock"},
         ],
     },
     {
@@ -338,8 +354,12 @@ DEFAULT_SERVICES = [
             "Pengiriman ritel & korporat — Balikpapan dan sekitarnya",
         ],
         "gallery": [
-            "https://static.prod-images.emergentagent.com/jobs/e3147f0b-4e58-4e9a-a73b-2f2e410a807b/images/66a879a15165a316e220d0eae72b43861b5dae647040d77c66c198991e940fee.jpeg",
-            "https://static.prod-images.emergentagent.com/jobs/e3147f0b-4e58-4e9a-a73b-2f2e410a807b/images/132b9a821aad5bf45dc64c946b6f4ca7191db9760752284d5b75268130fcc24f.jpeg",
+            {"url": "https://static.prod-images.emergentagent.com/jobs/e3147f0b-4e58-4e9a-a73b-2f2e410a807b/images/66a879a15165a316e220d0eae72b43861b5dae647040d77c66c198991e940fee.jpeg",
+             "caption_id": "Pemuatan paket ke armada pengiriman di loading dock",
+             "caption_en": "Loading packages onto the delivery fleet at the loading dock"},
+            {"url": "https://static.prod-images.emergentagent.com/jobs/e3147f0b-4e58-4e9a-a73b-2f2e410a807b/images/132b9a821aad5bf45dc64c946b6f4ca7191db9760752284d5b75268130fcc24f.jpeg",
+             "caption_id": "Serah terima paket kepada penerima tepat waktu",
+             "caption_en": "On-time package hand-over to the receiver"},
         ],
     },
     {
@@ -354,8 +374,12 @@ DEFAULT_SERVICES = [
             "Fasilitas industri & pergudangan — Kalimantan Timur",
         ],
         "gallery": [
-            "https://static.prod-images.emergentagent.com/jobs/e3147f0b-4e58-4e9a-a73b-2f2e410a807b/images/49154b5c9daf97e8f81e4147c51bbff48ea697efe6222b47c33f3f8808b22c15.jpeg",
-            "https://static.prod-images.emergentagent.com/jobs/e3147f0b-4e58-4e9a-a73b-2f2e410a807b/images/c405c2807686872170eeae2e7ff2777f9c811c7200a2c386e14cb1cf9e2d64f4.jpeg",
+            {"url": "https://static.prod-images.emergentagent.com/jobs/e3147f0b-4e58-4e9a-a73b-2f2e410a807b/images/49154b5c9daf97e8f81e4147c51bbff48ea697efe6222b47c33f3f8808b22c15.jpeg",
+             "caption_id": "Instalasi unit AC komersial oleh teknisi kami",
+             "caption_en": "Commercial AC unit installation by our technician"},
+            {"url": "https://static.prod-images.emergentagent.com/jobs/e3147f0b-4e58-4e9a-a73b-2f2e410a807b/images/c405c2807686872170eeae2e7ff2777f9c811c7200a2c386e14cb1cf9e2d64f4.jpeg",
+             "caption_id": "Perawatan sistem tata udara rooftop fasilitas industri",
+             "caption_en": "Maintenance of rooftop air handling units at an industrial facility"},
         ],
     },
 ]
@@ -366,15 +390,23 @@ async def seed():
     admin_password = os.environ['ADMIN_PASSWORD']
     existing = await db.users.find_one({"email": admin_email})
     if existing is None:
-        await db.users.insert_one({
-            "id": str(uuid.uuid4()),
-            "email": admin_email,
-            "password_hash": hash_password(admin_password),
-            "name": "Admin",
-            "role": "admin",
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        })
-        logger.info("Admin seeded")
+        other_admin = await db.users.find_one({"role": "admin"})
+        if other_admin:
+            await db.users.update_one(
+                {"id": other_admin["id"]},
+                {"$set": {"email": admin_email, "password_hash": hash_password(admin_password)}},
+            )
+            logger.info("Admin email updated from env")
+        else:
+            await db.users.insert_one({
+                "id": str(uuid.uuid4()),
+                "email": admin_email,
+                "password_hash": hash_password(admin_password),
+                "name": "Admin",
+                "role": "admin",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            })
+            logger.info("Admin seeded")
     elif not verify_password(admin_password, existing["password_hash"]):
         await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password)}})
         logger.info("Admin password updated from env")
@@ -382,6 +414,18 @@ async def seed():
     for svc in DEFAULT_SERVICES:
         if await db.services.find_one({"key": svc["key"]}) is None:
             await db.services.insert_one(dict(svc))
+
+    async for svc in db.services.find({}):
+        gallery = svc.get("gallery", [])
+        if gallery and isinstance(gallery[0], str):
+            defaults = next((d for d in DEFAULT_SERVICES if d["key"] == svc["key"]), None)
+            migrated = []
+            for url in gallery:
+                match = next((g for g in defaults["gallery"] if g["url"] == url), {}) if defaults else {}
+                migrated.append({"url": url, "caption_id": match.get("caption_id", ""), "caption_en": match.get("caption_en", "")})
+            await db.services.update_one({"_id": svc["_id"]}, {"$set": {"gallery": migrated}})
+            logger.info(f"Gallery migrated for {svc['key']}")
+
     if await db.settings.find_one({"key": "site"}) is None:
         await db.settings.insert_one({"key": "site", "nib_image_url": "/images/legal_nib.png"})
 

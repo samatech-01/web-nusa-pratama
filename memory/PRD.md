@@ -23,6 +23,12 @@ Bahasa user: **Indonesia** — selalu balas dalam Bahasa Indonesia.
 - Brute force lockout (5 gagal/15 mnt, IP dari X-Forwarded-For, TTL index), seed idempotent (password admin ikut .env)
 - Galeri seed: 8 foto ilustrasi hasil generate (admin bisa ganti)
 
+### Fase 3 (28 Jun 2026) — Caption galeri + email admin baru
+- Galeri dokumentasi kini berformat `{url, caption_id, caption_en}` — keterangan tampil di bawah foto pada modal (mengikuti bahasa aktif), dapat diedit di panel admin (input ID & EN per foto)
+- Migrasi otomatis galeri lama (string → objek) di seed()
+- Email admin diganti ke **admin@samaexpress.info** (seed memperbarui akun admin lama secara otomatis dari .env)
+- Diverifikasi: pytest 26/26 pass + screenshot modal & panel admin
+
 ## Arsitektur
 - Backend: FastAPI (`/app/backend/server.py`) — koleksi Mongo: users, services, settings, files, login_attempts
 - Frontend: React — pages: Landing, AdminLogin, AdminDashboard; context: LanguageContext, AuthContext

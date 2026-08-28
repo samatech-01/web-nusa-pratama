@@ -45,10 +45,20 @@ const ServiceModal = ({ service, onClose }) => {
           {service.gallery?.length > 0 && (
             <>
               <h4 className="font-heading font-bold text-xl text-[#F5A742] mb-4">{t("modal_gallery")}</h4>
-              <div data-testid="service-modal-gallery" className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                {service.gallery.map((url, i) => (
-                  <img key={i} src={resolveUrl(url)} alt={`${label} ${i + 1}`} loading="lazy" className="w-full aspect-[3/2] object-cover rounded shadow bg-gray-100" />
-                ))}
+              <div data-testid="service-modal-gallery" className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-8">
+                {service.gallery.map((g, i) => {
+                  const caption = (lang === "id" ? g.caption_id : g.caption_en) || g.caption_id || g.caption_en;
+                  return (
+                    <figure key={i}>
+                      <img src={resolveUrl(g.url)} alt={caption || `${label} ${i + 1}`} loading="lazy" className="w-full aspect-[3/2] object-cover rounded shadow bg-gray-100" />
+                      {caption && (
+                        <figcaption data-testid={`gallery-caption-${i}`} className="mt-2 text-sm text-[#666] leading-snug">
+                          {caption}
+                        </figcaption>
+                      )}
+                    </figure>
+                  );
+                })}
               </div>
             </>
           )}

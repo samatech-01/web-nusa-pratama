@@ -207,7 +207,7 @@ class TestServiceUpdate:
             "description_id": "TEST_deskripsi ID",
             "description_en": "TEST_description EN",
             "customers": ["TEST_customer A", "TEST_customer B"],
-            "gallery": svc["gallery"] + ["https://example.com/test.png"],
+            "gallery": svc["gallery"] + [{"url": "https://example.com/test.png", "caption_id": "TEST cap ID", "caption_en": "TEST cap EN"}],
         }
         try:
             r = api_client.put(f"{BASE_URL}/api/services/hvac", headers=auth_headers, json=payload, timeout=30)
