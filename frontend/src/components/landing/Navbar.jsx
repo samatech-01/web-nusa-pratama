@@ -1,18 +1,20 @@
 import { useState, useEffect } from "react";
-import { Menu, X } from "lucide-react";
-
-const LINKS = [
-  { label: "Home", href: "#home" },
-  { label: "About", href: "#introduction" },
-  { label: "Vision & Mission", href: "#vision" },
-  { label: "Services", href: "#services" },
-  { label: "Our Value", href: "#value" },
-  { label: "Contact", href: "#contact" },
-];
+import { Menu, X, Globe } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 export const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const { lang, toggle, t } = useLanguage();
+
+  const LINKS = [
+    { label: t("nav_home"), href: "#home", id: "home" },
+    { label: t("nav_about"), href: "#introduction", id: "about" },
+    { label: t("nav_vision"), href: "#vision", id: "vision" },
+    { label: t("nav_services"), href: "#services", id: "services" },
+    { label: t("nav_value"), href: "#value", id: "value" },
+    { label: t("nav_contact"), href: "#contact", id: "contact" },
+  ];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -34,39 +36,60 @@ export const Navbar = () => {
             NUSA PRATAMA SOLUTION
           </span>
         </a>
-        <div className="hidden lg:flex items-center gap-8">
+        <div className="hidden lg:flex items-center gap-7">
           {LINKS.map((l) => (
             <a
-              key={l.href}
+              key={l.id}
               href={l.href}
-              data-testid={`nav-link-${l.label.toLowerCase().replace(/[^a-z]+/g, "-")}`}
+              data-testid={`nav-link-${l.id}`}
               className="text-sm font-medium text-[#2b2b2b] hover:text-[#F5A742] transition-colors"
             >
               {l.label}
             </a>
           ))}
+          <button
+            onClick={toggle}
+            data-testid="language-toggle"
+            className="flex items-center gap-1.5 border border-[#F5A742] text-[#F5A742] hover:bg-[#F5A742] hover:text-white text-xs font-bold px-3 py-1.5 rounded-full transition-colors"
+          >
+            <Globe size={14} />
+            {lang === "id" ? "EN" : "ID"}
+          </button>
           <a
             href="#contact"
             data-testid="nav-cta-button"
             className="bg-[#F5A742] hover:bg-[#e0942f] text-white text-sm font-semibold px-5 py-2.5 rounded-full transition-colors"
           >
-            Get in Touch
+            {t("nav_cta")}
           </a>
         </div>
-        <button
-          data-testid="mobile-menu-toggle"
-          className="lg:hidden p-2 text-[#2b2b2b]"
-          onClick={() => setOpen(!open)}
-          aria-label="Toggle menu"
-        >
-          {open ? <X size={24} /> : <Menu size={24} />}
-        </button>
+        <div className="lg:hidden flex items-center gap-2">
+          <button
+            onClick={() => {
+              toggle();
+              setOpen(false);
+            }}
+            data-testid="language-toggle-mobile"
+            className="flex items-center gap-1 border border-[#F5A742] text-[#F5A742] text-xs font-bold px-2.5 py-1.5 rounded-full"
+          >
+            <Globe size={13} />
+            {lang === "id" ? "EN" : "ID"}
+          </button>
+          <button
+            data-testid="mobile-menu-toggle"
+            className="p-2 text-[#2b2b2b]"
+            onClick={() => setOpen(!open)}
+            aria-label="Toggle menu"
+          >
+            {open ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
       </div>
       {open && (
         <div data-testid="mobile-menu" className="lg:hidden bg-white shadow-lg px-6 py-4 flex flex-col gap-4">
           {LINKS.map((l) => (
             <a
-              key={l.href}
+              key={l.id}
               href={l.href}
               onClick={() => setOpen(false)}
               className="text-sm font-medium text-[#2b2b2b] hover:text-[#F5A742]"

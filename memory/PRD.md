@@ -4,19 +4,36 @@
 "buatkan landing page persis seperti file terlampir, menggunakan custom domain yang ada dilampiran" — Clone pixel-perfect dari PDF "landing Page NP.pdf" (9 halaman company profile PT Nusa Pratama Solution).
 Bahasa user: **Indonesia** — selalu balas dalam Bahasa Indonesia.
 
-## Yang Sudah Diimplementasikan (28 Jun 2026)
-Frontend-only landing page (tidak butuh backend/DB):
-- Aset asli diekstrak langsung dari PDF via pymupdf (dengan smask/transparansi) → `/app/frontend/public/images/` (logo_full, logo_mark, legal_akta, legal_nib, vision_team, building_bg, hvac_logo, value_1..4, food_trays, warehouse, boxes_bg, qr_code)
-- Komponen: `src/components/landing/` (Navbar, HeroIntro, ServicesValues, ProcessSupply, LogisticContact), halaman `src/pages/Landing.jsx`
-- Section (urut sesuai PDF): Hero logo + COMPANY PROFILE → Introduction + dokumen legal (Akta & NIB) + pita "LEGAL" → Vision & Mission → Our Services (Catering, General Supply, Logistics, HVAC) → Our Value (4 kartu bernomor, urutan gambar sudah dikoreksi) → Standard Food Process → General Supply (bg gudang) → Logistic (4 langkah) → Contact Us (alamat Balikpapan, email, telp, QR) → Footer
-- Font Poppins, warna oranye #F5A742, smooth scroll, navbar sticky + mobile menu, animasi fade-up hero
-- Diverifikasi via screenshot semua section (desktop 1920px) — sesuai desain PDF
+## Yang Sudah Diimplementasikan
+
+### Fase 1 (28 Jun 2026) — Landing page statis
+- Aset asli diekstrak dari PDF via pymupdf → `/app/frontend/public/images/`
+- Semua section sesuai PDF: Hero, Introduction+Legal, Vision & Mission, Our Services, Our Value, Standard Food Process, General Supply, Logistic, Contact, Footer
+- Font Poppins, oranye #F5A742, navbar sticky, smooth scroll
+
+### Fase 2 (28 Jun 2026) — Interaktif + Admin CMS (semua diverifikasi testing agent, 26/26 backend pass, frontend 100%)
+- **Tombol WhatsApp** mengambang → wa.me/6282253706473 (`WhatsAppButton.jsx`)
+- **Toggle EN/ID** (default ID, tersimpan di localStorage `np_lang`) — `LanguageContext.jsx` berisi semua terjemahan
+- **Icon Our Services klik-able** → modal detail (deskripsi per bahasa, galeri foto dokumentasi, daftar pelanggan) — data dari DB via GET /api/content
+- **Admin CMS** (JWT auth, Bearer token di localStorage `np_token`):
+  - /admin/login → /admin dashboard
+  - Edit deskripsi ID/EN, pelanggan, galeri (upload/hapus foto) per service
+  - Ganti gambar NIB, ganti password admin
+  - Upload gambar via **Emergent Object Storage** (POST /api/upload → GET /api/files/{id})
+- Brute force lockout (5 gagal/15 mnt, IP dari X-Forwarded-For, TTL index), seed idempotent (password admin ikut .env)
+- Galeri seed: 8 foto ilustrasi hasil generate (admin bisa ganti)
+
+## Arsitektur
+- Backend: FastAPI (`/app/backend/server.py`) — koleksi Mongo: users, services, settings, files, login_attempts
+- Frontend: React — pages: Landing, AdminLogin, AdminDashboard; context: LanguageContext, AuthContext
+- Kredensial admin: lihat `/app/memory/test_credentials.md`
+- Regression suite: `cd /app/backend && python -m pytest tests/backend_test.py` (26 pass)
 
 ## Catatan Custom Domain
-PDF tidak memuat nama domain eksplisit (hanya email gmail). Custom domain dipasang lewat fitur Deploy Emergent → Settings → Custom Domain setelah user deploy & menyediakan domainnya (mis. nusapratamasolution.com).
+PDF tidak memuat nama domain. Pasang via Deploy → Settings → Custom Domain setelah deploy.
 
 ## Backlog
-- P1: Hubungkan custom domain saat deploy (butuh konfirmasi nama domain dari user)
-- P2: Form kontak fungsional (backend + simpan ke MongoDB / kirim email)
-- P2: Versi Bahasa Indonesia / toggle EN-ID untuk konten
-- P2: Tombol WhatsApp langsung ke +62 8225 370 6473
+- P1: Hubungkan custom domain saat deploy (butuh nama domain dari user)
+- P2: Form kontak fungsional (simpan ke Mongo / kirim email)
+- P2: Galeri katering di landing page utama
+- P3: Invalidasi JWT lama setelah ganti password (token version)
