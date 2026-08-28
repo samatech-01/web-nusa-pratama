@@ -7,27 +7,26 @@ export const Hero = () => {
   const { t } = useLanguage();
   return (
     <section id="home" data-testid="hero-section" className="min-h-screen bg-white flex flex-col items-center justify-center relative overflow-hidden px-6">
-      <div className="absolute top-0 left-0 w-40 h-3 bg-[#F5A742]" />
-      <div className="absolute bottom-0 right-0 w-40 h-3 bg-[#F5A742]" />
-      <img
-        src="/images/logo_full.png"
-        alt="Nusa Pratama Solution"
-        data-testid="hero-logo"
-        className="w-full max-w-2xl animate-fade-up"
-      />
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-10 sm:gap-16 animate-fade-up -mt-10">
+        <img
+          src="/images/logo_mark.png"
+          alt="Nusa Pratama Solution"
+          data-testid="hero-logo"
+          className="w-44 sm:w-60 lg:w-72 [filter:drop-shadow(-16px_24px_0_#e6e6e6)]"
+        />
+        <h1
+          data-testid="hero-company-name"
+          className="font-heading font-bold text-[#2b2b2b] tracking-[0.28em] text-3xl sm:text-4xl lg:text-5xl leading-[1.6] text-center sm:text-left"
+        >
+          NUSA<br />PRATAMA<br />SOLUTION
+        </h1>
+      </div>
       <p
         data-testid="hero-tagline"
-        className="mt-16 font-heading font-bold tracking-[0.35em] text-[#2b2b2b] text-lg sm:text-xl animate-fade-up-delay"
+        className="absolute bottom-12 left-0 right-0 text-center font-heading font-bold tracking-[0.2em] text-[#2b2b2b] text-lg sm:text-xl animate-fade-up-delay"
       >
         {t("hero_tagline")}
       </p>
-      <a
-        href="#introduction"
-        data-testid="hero-scroll-link"
-        className="mt-10 text-sm text-[#9a9a9a] hover:text-[#F5A742] transition-colors animate-fade-up-delay"
-      >
-        {t("hero_scroll")}
-      </a>
     </section>
   );
 };

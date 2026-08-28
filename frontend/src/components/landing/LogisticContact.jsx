@@ -52,7 +52,7 @@ export const Contact = () => {
             </div>
             <div className="flex gap-4 items-center" data-testid="contact-email">
               <Mail className="text-[#F5A742] shrink-0" size={24} />
-              <a href="mailto:pt.nusapratamasolution@gmail.com" className="hover:text-[#F5A742] transition-colors">
+              <a href="mailto:pt.nusapratamasolution@gmail.com" className="hover:text-[#F5A742] transition-colors break-all">
                 pt.nusapratamasolution@gmail.com
               </a>
             </div>

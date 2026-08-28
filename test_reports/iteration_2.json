@@ -1,0 +1,29 @@
+{
+  "summary": "Frontend-only verification of new hero layout (logo left + 3-line stacked company name right, bottom-center tagline) at 1920px and 390px, plus light regression on navbar, introduction, vision/mission, services modal and WhatsApp float. Hero logo/name layout PASSES on both breakpoints. One real defect found: hero tagline is NOT horizontally centered (offset right by half its width) because the fadeUp CSS animation (animation-fill-mode: both) overrides Tailwind's -translate-x-1/2; on 390px this also causes horizontal page overflow (scrollWidth 397 vs clientWidth 390).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "HeroIntro.jsx > Hero tagline", "issue": "Tagline not centered: bounding box x=960 width=262 at 1920px viewport (center 1091 instead of 960). Computed transform is matrix(1,0,0,1,0,0) — the .animate-fade-up-delay keyframe (transform: translateY(0), fill-mode both) wins over Tailwind '-translate-x-1/2', so left-1/2 shift is never compensated. Fix: replace 'left-1/2 -translate-x-1/2' with 'left-0 right-0 w-full text-center' (or add translateX(-50%) into the keyframes / use a non-transform animation for this element).", "selector": "[data-testid=\"hero-tagline\"]", "priority": "HIGH"},
+      {"component": "HeroIntro.jsx > Hero tagline (mobile 390px)", "issue": "Same root cause creates horizontal overflow: tagline right edge = 431px vs clientWidth 390 (documentElement.scrollWidth 397). Text 'PROFIL PERUSAHAAN' is visually cut off on the right and page scrolls sideways. whitespace-nowrap + uncentered absolute positioning.", "selector": "[data-testid=\"hero-tagline\"]", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Hero desktop 1920px", "issues": ["Layout matches PDF intent (logo left with grey drop shadow, NUSA/PRATAMA/SOLUTION stacked right, group centered at x=960), but tagline mis-centering makes bottom of page look unbalanced."]}
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_2.json"],
+  "action_items": [
+    "Fix hero tagline horizontal centering (transform overridden by fadeUp animation) — use left-0 right-0 w-full text-center or bake translateX(-50%) into keyframes.",
+    "Verify no horizontal overflow at 390px after the fix (document.documentElement.scrollWidth must equal clientWidth)."
+  ],
+  "critical_code_review_comments": [
+    "App.css .animate-fade-up / .animate-fade-up-delay use animation-fill-mode: both with transform keyframes; any element combining these classes with Tailwind translate/scale utilities will silently lose those utilities. Prefer animating opacity + a wrapper element, or include the required translateX in the keyframes."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested", "frontend": "83% (10/12 hero+regression checks passed)"},
+  "seed_data_creation": "none",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Verified passing: hero-logo loads (/images/logo_mark.png, natural 350x347) and sits left of hero-company-name with 144px vertical overlap at 1920px; name is 3 lines NUSA|PRATAMA|SOLUTION; group centered; language-toggle switches tagline PROFIL PERUSAHAAN <-> COMPANY PROFILE; at 390px logo stacks above name; main-navbar, navbar-logo, nav links, introduction-section, vision-mission-section, services-section, whatsapp-float-button (wa.me/6282253706473) all present; service-item-* click opens service-detail-modal with 2 loaded gallery images and captions below photos, close button works. Only remaining issue is hero-tagline centering/overflow. Note: WhatsApp testid is 'whatsapp-float-button' and navbar testid is 'main-navbar' (not 'navbar'/'whatsapp-float').",
+  "rca_of_the_issue": "CSS animation with animation-fill-mode: both applies its keyframe 'transform' value at all times, overriding the inline/utility class transform. .animate-fade-up-delay keyframes end at transform: translateY(0), which nullifies Tailwind's -translate-x-1/2 on the absolutely positioned tagline (left:50%), shifting it right by half its width and causing 7px horizontal overflow at 390px viewport."
+}

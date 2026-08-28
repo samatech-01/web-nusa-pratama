@@ -29,6 +29,11 @@ Bahasa user: **Indonesia** — selalu balas dalam Bahasa Indonesia.
 - Email admin diganti ke **admin@samaexpress.info** (seed memperbarui akun admin lama secara otomatis dari .env)
 - Diverifikasi: pytest 26/26 pass + screenshot modal & panel admin
 
+### Fase 4 (28 Jun 2026) — Hero sesuai PDF (bug fix user)
+- Hero dirombak persis PDF hal. 1: logo mark besar + bayangan abu di kiri, teks NUSA/PRATAMA/SOLUTION bertumpuk 3 baris di kanan, "PROFIL PERUSAHAAN/COMPANY PROFILE" di bawah tengah
+- Fix hasil testing agent (iteration_2): tagline tidak center (animasi CSS menimpa transform Tailwind → pakai left-0 right-0 text-center) + overflow 7px mobile (email panjang di Contact → break-all). Verifikasi: tagline center 960/960, overflow mobile 0px
+- CATATAN: kelas .animate-fade-up* memakai animation-fill-mode both dengan transform — jangan digabung dengan utilitas translate/scale Tailwind di elemen yang sama
+
 ## Arsitektur
 - Backend: FastAPI (`/app/backend/server.py`) — koleksi Mongo: users, services, settings, files, login_attempts
 - Frontend: React — pages: Landing, AdminLogin, AdminDashboard; context: LanguageContext, AuthContext
