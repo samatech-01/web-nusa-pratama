@@ -1,0 +1,43 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap");
+
+html {
+  scroll-behavior: smooth;
+}
+
+.font-heading {
+  font-family: "Poppins", sans-serif;
+}
+
+.font-body {
+  font-family: "Poppins", sans-serif;
+  font-weight: 300;
+}
+
+.font-body p,
+.font-body li {
+  font-weight: 300;
+}
+
+::selection {
+  background: #f5a742;
+  color: #fff;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.9s ease both;
+}
+
+.animate-fade-up-delay {
+  animation: fadeUp 0.9s ease 0.35s both;
+}
