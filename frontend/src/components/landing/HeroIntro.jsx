@@ -1,29 +1,42 @@
 import { useLanguage } from "@/context/LanguageContext";
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const resolveUrl = (url) => (url && url.startsWith("/api/") ? `${BACKEND_URL}${url}` : url);
+import { resolveUrl } from "@/config";
 
 export const Hero = () => {
   const { t } = useLanguage();
   return (
-    <section id="home" data-testid="hero-section" className="min-h-screen bg-white flex flex-col items-center justify-center relative overflow-hidden px-6">
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-10 sm:gap-16 animate-fade-up -mt-10">
+    <section
+      id="home"
+      data-testid="hero-section"
+      className="min-h-screen bg-[#2b2b2b] text-white flex flex-col items-center justify-center relative overflow-hidden px-6 pt-20"
+    >
+      {/* Background image & gradient overlay identik dengan halaman layanan */}
+      <div className="absolute inset-0 opacity-20 pointer-events-none">
+        <img src="/images/building_bg.png" alt="" className="w-full h-full object-cover" />
+      </div>
+
+      {/* Amber glow effects */}
+      <div className="absolute top-0 right-0 w-96 h-96 bg-[#F5A742] opacity-15 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-80 h-80 bg-[#F5A742] opacity-10 rounded-full blur-3xl -ml-20 -mb-20 pointer-events-none" />
+
+      {/* Main hero content */}
+      <div className="relative z-10 flex flex-col sm:flex-row items-center justify-center gap-10 sm:gap-16 animate-fade-up -mt-10">
         <img
           src="/images/logo_mark.png"
           alt="Nusa Pratama Solution"
           data-testid="hero-logo"
-          className="w-44 sm:w-60 lg:w-72 [filter:drop-shadow(-16px_24px_0_#e6e6e6)]"
+          className="w-44 sm:w-60 lg:w-72 [filter:drop-shadow(0_20px_40px_rgba(0,0,0,0.6))]"
         />
         <h1
           data-testid="hero-company-name"
-          className="font-heading font-bold text-[#2b2b2b] tracking-[0.28em] text-3xl sm:text-4xl lg:text-5xl leading-[1.6] text-center sm:text-left"
+          className="font-heading font-extrabold text-white tracking-[0.28em] text-3xl sm:text-4xl lg:text-5xl leading-[1.6] text-center sm:text-left drop-shadow-md"
         >
           NUSA<br />PRATAMA<br />SOLUTION
         </h1>
       </div>
+
       <p
         data-testid="hero-tagline"
-        className="absolute bottom-12 left-0 right-0 text-center font-heading font-bold tracking-[0.2em] text-[#2b2b2b] text-lg sm:text-xl animate-fade-up-delay"
+        className="relative z-10 text-center font-heading font-bold tracking-[0.25em] text-[#F5A742] text-lg sm:text-xl animate-fade-up-delay mt-16 sm:mt-20"
       >
         {t("hero_tagline")}
       </p>

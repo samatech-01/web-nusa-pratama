@@ -1,12 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import { Navigate, Link } from "react-router-dom";
-import axios from "axios";
 import { toast } from "sonner";
 import { LogOut, Upload, Trash2, Save, KeyRound, ExternalLink } from "lucide-react";
 import { useAuth, authAxios, formatApiErrorDetail } from "@/context/AuthContext";
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const resolveUrl = (url) => (url && url.startsWith("/api/") ? `${BACKEND_URL}${url}` : url);
+import { BACKEND_URL, API, resolveUrl } from "@/config";
 
 const ServiceEditor = ({ service, onSaved }) => {
   const [form, setForm] = useState(service);
@@ -109,7 +106,7 @@ const ServiceEditor = ({ service, onSaved }) => {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           {(form.gallery || []).map((g, i) => (
-            <div key={i} className="border rounded-lg p-3 space-y-2 bg-gray-50">
+            <div key={g.url || `gallery-${i}`} className="border rounded-lg p-3 space-y-2 bg-gray-50">
               <div className="relative group">
                 <img src={resolveUrl(g.url)} alt={`Galeri ${i + 1}`} className="w-full aspect-[3/2] object-cover rounded border" />
                 <button
@@ -209,16 +206,26 @@ const NibEditor = ({ settings, onSaved }) => {
 const PasswordEditor = () => {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
+    if (next !== confirmPassword) {
+      toast.error("Konfirmasi password baru tidak cocok.");
+      return;
+    }
+    if (next.length < 8) {
+      toast.error("Password baru minimal 8 karakter.");
+      return;
+    }
     setSaving(true);
     try {
       await authAxios.post("/auth/change-password", { current_password: current, new_password: next });
       toast.success("Password berhasil diubah");
       setCurrent("");
       setNext("");
+      setConfirmPassword("");
     } catch (err) {
       toast.error(formatApiErrorDetail(err.response?.data?.detail));
     } finally {
@@ -231,7 +238,7 @@ const PasswordEditor = () => {
       <h3 className="font-heading font-bold text-lg mb-4 flex items-center gap-2">
         <KeyRound size={18} /> Ganti Password Admin
       </h3>
-      <div className="grid sm:grid-cols-2 gap-4 mb-4">
+      <div className="grid sm:grid-cols-3 gap-4 mb-4">
         <input
           type="password"
           data-testid="password-current-input"
@@ -249,6 +256,16 @@ const PasswordEditor = () => {
           required
           minLength={8}
           placeholder="Password baru (min. 8 karakter)"
+          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#F5A742]"
+        />
+        <input
+          type="password"
+          data-testid="password-confirm-input"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          required
+          minLength={8}
+          placeholder="Ulangi password baru"
           className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#F5A742]"
         />
       </div>
@@ -271,10 +288,22 @@ export default function AdminDashboard() {
   const [activeKey, setActiveKey] = useState("catering");
 
   useEffect(() => {
-    axios.get(`${BACKEND_URL}/api/content`).then((res) => {
-      setServices(res.data.services);
-      setSettings(res.data.settings || {});
-    });
+    let isMounted = true;
+    authAxios
+      .get("/content")
+      .then((res) => {
+        if (isMounted && res.data) {
+          setServices(res.data.services || []);
+          setSettings(res.data.settings || {});
+        }
+      })
+      .catch((err) => {
+        toast.error("Gagal memuat data konten dari server.");
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   if (user === null) return <div className="min-h-screen flex items-center justify-center font-body">Memuat...</div>;

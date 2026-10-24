@@ -1,91 +1,22 @@
-import { useState, useEffect } from "react";
-import { HandPlatter, Package, Truck, Users, X } from "lucide-react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { HandPlatter, Package, Truck, Wind, Briefcase, ArrowRight } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const resolveUrl = (url) => (url && url.startsWith("/api/") ? `${BACKEND_URL}${url}` : url);
-
-const ICONS = { catering: HandPlatter, "general-supply": Package, logistics: Truck };
-
-const ServiceModal = ({ service, onClose }) => {
-  const { lang, t } = useLanguage();
-
-  useEffect(() => {
-    if (!service) return;
-    const onKey = (e) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [service, onClose]);
-
-  if (!service) return null;
-  const description = lang === "id" ? service.description_id : service.description_en;
-  const label = lang === "id" ? service.label_id || service.label : service.label;
-  return (
-    <div
-      data-testid="service-detail-modal"
-      className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white max-w-3xl w-full max-h-[88vh] overflow-y-auto rounded-lg shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="sticky top-0 bg-[#F5A742] text-white px-8 py-5 flex items-center justify-between z-10">
-          <h3 data-testid="service-modal-title" className="font-heading font-extrabold text-2xl sm:text-3xl">{label}</h3>
-          <button data-testid="service-modal-close" onClick={onClose} className="p-1 hover:bg-white/20 rounded-full transition-colors" aria-label="Close">
-            <X size={26} />
-          </button>
-        </div>
-        <div className="p-8">
-          <p data-testid="service-modal-description" className="text-[#2b2b2b] text-lg leading-relaxed mb-8">{description}</p>
-          {service.gallery?.length > 0 && (
-            <>
-              <h4 className="font-heading font-bold text-xl text-[#F5A742] mb-4">{t("modal_gallery")}</h4>
-              <div data-testid="service-modal-gallery" className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-8">
-                {service.gallery.map((g, i) => {
-                  const caption = (lang === "id" ? g.caption_id : g.caption_en) || g.caption_id || g.caption_en;
-                  return (
-                    <figure key={i}>
-                      <img src={resolveUrl(g.url)} alt={caption || `${label} ${i + 1}`} loading="lazy" className="w-full aspect-[3/2] object-cover rounded shadow bg-gray-100" />
-                      {caption && (
-                        <figcaption data-testid={`gallery-caption-${i}`} className="mt-2 text-sm text-[#666] leading-snug">
-                          {caption}
-                        </figcaption>
-                      )}
-                    </figure>
-                  );
-                })}
-              </div>
-            </>
-          )}
-          {service.customers?.length > 0 && (
-            <>
-              <h4 className="font-heading font-bold text-xl text-[#F5A742] mb-4 flex items-center gap-2">
-                <Users size={22} /> {t("modal_customers")}
-              </h4>
-              <ul data-testid="service-modal-customers" className="space-y-3">
-                {service.customers.map((c, i) => (
-                  <li key={i} className="flex gap-3 text-[#2b2b2b] text-base leading-relaxed">
-                    <span className="text-[#F5A742] font-bold mt-0.5">✓</span>
-                    {c}
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+// Robust mapping for service keys
+const getServiceIcon = (key = "") => {
+  const normalizedKey = key.toLowerCase().replace(/[-_]/g, "");
+  if (normalizedKey.includes("cater") || normalizedKey.includes("katering")) return HandPlatter;
+  if (normalizedKey.includes("supply") || normalizedKey.includes("general")) return Package;
+  if (normalizedKey.includes("logistic") || normalizedKey.includes("logistik")) return Truck;
+  if (normalizedKey.includes("hvac") || normalizedKey.includes("ac")) return Wind;
+  return Briefcase;
 };
 
 export const Services = ({ services = [] }) => {
   const { lang, t } = useLanguage();
-  const [selected, setSelected] = useState(null);
+  const [hvacImageError, setHvacImageError] = useState(false);
+
   return (
     <section id="services" data-testid="services-section" className="relative py-28 overflow-hidden">
       <img src="/images/building_bg.png" alt="" className="absolute inset-0 w-full h-full object-cover" />
@@ -100,32 +31,46 @@ export const Services = ({ services = [] }) => {
           <div className="bg-white py-16 px-8 sm:px-12">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-10 items-start">
               {services.map((s) => {
-                const Icon = ICONS[s.key];
+                const isHvac = (s.key || "").toLowerCase().includes("hvac");
+                const Icon = getServiceIcon(s.key);
                 const label = lang === "id" ? s.label_id || s.label : s.label;
+
                 return (
-                  <button
+                  <Link
                     key={s.key}
+                    to={`/services/${s.key}`}
                     data-testid={`service-item-${s.key}`}
-                    onClick={() => setSelected(s)}
-                    className="flex flex-col items-center text-center gap-6 group cursor-pointer"
+                    className="flex flex-col items-center text-center gap-5 group cursor-pointer"
                   >
-                    <span className="font-heading font-bold text-xl text-[#2b2b2b] group-hover:text-[#F5A742] transition-colors">{label}</span>
-                    {s.key === "hvac" ? (
-                      <img src="/images/hvac_logo.png" alt={label} className="w-28 h-28 object-contain transition-transform duration-300 group-hover:scale-110" />
-                    ) : (
-                      <span className="w-28 h-28 rounded-full bg-[#F5A742] flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
-                        {Icon && <Icon size={52} strokeWidth={1.6} className="text-white" />}
-                      </span>
-                    )}
-                  </button>
+                    <span className="font-heading font-bold text-xl text-[#2b2b2b] group-hover:text-[#F5A742] transition-colors">
+                      {label}
+                    </span>
+                    <span className="w-28 h-28 rounded-full bg-[#F5A742] flex items-center justify-center transition-transform duration-300 group-hover:scale-110 shadow-md overflow-hidden relative">
+                      {isHvac && !hvacImageError ? (
+                        <img
+                          src="/images/hvac_logo.png"
+                          alt={label}
+                          onError={() => setHvacImageError(true)}
+                          className="w-full h-full object-cover scale-[1.12]"
+                        />
+                      ) : (
+                        Icon && <Icon size={52} strokeWidth={1.6} className="text-white" />
+                      )}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#F5A742] group-hover:text-[#e0942f] transition-all transform group-hover:translate-x-1">
+                      <span>{lang === "id" ? "Lihat Detail" : "View Details"}</span>
+                      <ArrowRight size={13} />
+                    </span>
+                  </Link>
                 );
               })}
             </div>
-            <p className="text-center text-sm text-[#9a9a9a] mt-10">{t("services_hint")}</p>
+            <p className="text-center text-sm text-[#9a9a9a] mt-10">
+              {lang === "id" ? "Klik ikon layanan untuk informasi dan spesifikasi detail" : t("services_hint")}
+            </p>
           </div>
         </div>
       </div>
-      <ServiceModal service={selected} onClose={() => setSelected(null)} />
     </section>
   );
 };

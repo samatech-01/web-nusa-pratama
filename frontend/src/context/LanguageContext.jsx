@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 
 const translations = {
   en: {
@@ -60,38 +60,38 @@ const translations = {
     nav_contact: "Kontak",
     nav_cta: "Hubungi Kami",
     hero_tagline: "PROFIL PERUSAHAAN",
-    hero_scroll: "Gulir untuk menjelajah ↓",
-    intro_heading: "PENDAHULUAN",
-    intro_p1: "PT Nusa Pratama Solution adalah perusahaan nasional yang terus berkembang dengan bidang usaha katering, general supply, dan jasa logistik.",
-    intro_p2: "Siap melayani skala nasional maupun internasional untuk sektor industri, pertambangan, perusahaan migas, perkantoran, serta berbagai acara dan kegiatan yang dibutuhkan oleh pelanggan (klien) kami.",
+    hero_scroll: "Gulir ke bawah ↓",
+    intro_heading: "TENTANG KAMI",
+    intro_p1: "PT Nusa Pratama Solution adalah perusahaan nasional yang berkembang di bidang katering, general supply dan jasa logistik.",
+    intro_p2: "Siap melayani kebutuhan sektor industri berskala nasional maupun internasional, pertambangan, perusahaan migas, perkantoran, dan berbagai kegiatan lainnya yang dibutuhkan oleh klien kami.",
     vision_heading: "VISI",
     vision_text: "Menjadi perusahaan katering, general supply, dan jasa logistik terbaik.",
     mission_heading: "MISI",
-    mission_1: "Memberikan pelayanan yang prima.",
-    mission_2: "Menghasilkan produk yang halal, aman, dan sehat.",
-    mission_3: "Tanggap dalam merespon keluhan pelanggan.",
-    mission_4: "Perbaikan berkelanjutan untuk menghadirkan produk dengan kualitas terbaik.",
+    mission_1: "Memberikan pelayanan terbaik.",
+    mission_2: "Menghasilkan produk yang halal, aman dan sehat.",
+    mission_3: "Cepat tanggap dalam menangani keluhan pelanggan.",
+    mission_4: "Perbaikan terus-menerus guna menghasilkan produk dengan kualitas terbaik.",
     services_heading_1: "LAYANAN",
     services_heading_2: "KAMI",
-    services_hint: "Klik ikon untuk melihat detail",
+    services_hint: "Klik ikon untuk informasi detail",
     modal_gallery: "Galeri Dokumentasi",
-    modal_customers: "Pelanggan yang Pernah Kami Layani",
+    modal_customers: "Pelanggan yang Pernah Kami Tangani",
     values_heading: "NILAI KAMI",
     value_1: "Pelayanan dan produk terbaik demi kepuasan pelanggan.",
-    value_2: "Taat aturan dan patuh pada regulasi perusahaan.",
-    value_3: "Halal dalam setiap proses standar makanan, peralatan pengiriman, pengadaan barang dan jasa.",
-    value_4: "Bekerja dengan sikap jujur, disiplin, dan bertanggung jawab.",
-    process_heading: "STANDAR PROSES MAKANAN",
-    process_test_title: "Uji Makanan",
-    process_test_text: "Menu yang disepakati akan diuji oleh perwakilan klien di dapur utama sebelum standarisasi resep dan pengukuran kalori.",
+    value_2: "Taat aturan dan mematuhi regulasi perusahaan.",
+    value_3: "Halal untuk setiap standar pengolahan makanan, peralatan pengiriman, pengadaan barang dan jasa.",
+    value_4: "Bekerja dengan jujur, disiplin, dan bertanggung jawab.",
+    process_heading: "STANDAR PENGOLAHAN MAKANAN",
+    process_test_title: "Food Testing",
+    process_test_text: "Menu yang disepakati akan diuji oleh perwakilan klien di dapur utama sebelum standardisasi resep dan penghitungan kalori.",
     process_cycle_title: "Siklus Menu",
-    process_cycle_text: "Menu akan diganti setiap hari.",
+    process_cycle_text: "Menu akan berganti setiap hari.",
     process_safety_title: "Kontrol Keamanan Pangan",
-    process_safety_text: "Setiap menu yang disajikan telah lolos pengawasan keamanan pangan mengacu pada penerapan HACCP. Sampel keamanan pangan tersedia untuk klien dan perusahaan.",
-    process_lab_title: "Sampling Laboratorium",
-    process_lab_text: "Sampel makanan acak akan diuji di laboratorium setiap 3 bulan.",
+    process_safety_text: "Setiap menu yang disajikan telah melewati pengawasan keamanan pangan mengacu pada penerapan HACCP. Sampel keamanan pangan selalu disediakan untuk klien dan perusahaan.",
+    process_lab_title: "Uji Laboratorium",
+    process_lab_text: "Sampel makanan acak akan diuji di laboratorium secara berkala setiap 3 bulan.",
     supply_heading: "GENERAL SUPPLY",
-    supply_text: "Merupakan proses kegiatan pemenuhan atau penyediaan kebutuhan dan pasokan barang berdasarkan kontrak maupun pembelian langsung untuk memenuhi kebutuhan bisnis, dengan tujuan memperoleh barang dengan harga yang akuntabel, jumlah dan kualitas yang tepat, serta pengadaan yang tepat waktu.",
+    supply_text: "Proses kegiatan pemenuhan atau penyediaan kebutuhan dan pasokan barang berdasarkan kontrak maupun pembelian langsung untuk memenuhi kebutuhan bisnis, dengan tujuan memperoleh barang dengan harga yang akuntabel, jumlah dan kualitas yang tepat serta pengadaan yang tepat waktu.",
     logistic_heading: "LOGISTIK",
     logistic_1: "Paket diserahkan ke jasa pengiriman ritel kami.",
     logistic_2: "Paket akan disortir berdasarkan jenis barang dan area pengiriman.",
@@ -107,12 +107,19 @@ const LanguageContext = createContext(null);
 
 export const LanguageProvider = ({ children }) => {
   const [lang, setLang] = useState(() => localStorage.getItem("np_lang") || "id");
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
+
   const toggle = () => {
     const next = lang === "id" ? "en" : "id";
     setLang(next);
     localStorage.setItem("np_lang", next);
   };
+
   const t = (key) => translations[lang][key] || key;
+
   return (
     <LanguageContext.Provider value={{ lang, toggle, t }}>
       {children}

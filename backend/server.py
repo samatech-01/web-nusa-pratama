@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -18,60 +19,79 @@ import jwt
 import requests
 from datetime import datetime, timezone, timedelta
 
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
-
-app = FastAPI()
-api_router = APIRouter(prefix="/api")
-
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
+db_name = os.environ.get('DB_NAME', 'nusa_pratama')
+client = AsyncIOMotorClient(mongo_url)
+db = client[db_name]
+
 JWT_ALGORITHM = "HS256"
-JWT_SECRET = os.environ['JWT_SECRET']
+JWT_SECRET = os.environ.get('JWT_SECRET', 'kunci_rahasia_nusa_pratama_default_development_only_12345')
 
 STORAGE_BASE = (os.environ.get("INTEGRATION_PROXY_URL") or "").strip() or "https://integrations.emergentagent.com"
 STORAGE_URL = STORAGE_BASE.rstrip("/") + "/objstore/api/v1/storage"
 EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY")
 APP_NAME = "nusa-pratama"
+
+UPLOAD_DIR = (ROOT_DIR / "uploads").resolve()
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
 storage_key = None
+
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif"}
+MAX_FILE_SIZE = 8 * 1024 * 1024  # 8MB
+TRUSTED_PROXIES = {"127.0.0.1", "localhost", "::1"}
 
 
 def init_storage(force: bool = False):
     global storage_key
+    if not EMERGENT_KEY:
+        return None
     if storage_key and not force:
         return storage_key
-    resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_KEY}, timeout=30)
-    resp.raise_for_status()
-    storage_key = resp.json()["storage_key"]
-    return storage_key
+    try:
+        resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_KEY}, timeout=10)
+        resp.raise_for_status()
+        storage_key = resp.json()["storage_key"]
+        return storage_key
+    except Exception as e:
+        logger.warning(f"Storage init skipped or failed: {e}")
+        return None
 
 
 def put_object(path: str, data: bytes, content_type: str) -> dict:
     key = init_storage()
+    if not key:
+        return {}
     resp = requests.put(
         f"{STORAGE_URL}/objects/{path}",
         headers={"X-Storage-Key": key, "Content-Type": content_type},
-        data=data, timeout=120,
+        data=data, timeout=60,
     )
     if resp.status_code == 404:
         key = init_storage(force=True)
-        resp = requests.put(
-            f"{STORAGE_URL}/objects/{path}",
-            headers={"X-Storage-Key": key, "Content-Type": content_type},
-            data=data, timeout=120,
-        )
+        if key:
+            resp = requests.put(
+                f"{STORAGE_URL}/objects/{path}",
+                headers={"X-Storage-Key": key, "Content-Type": content_type},
+                data=data, timeout=60,
+            )
     resp.raise_for_status()
     return resp.json()
 
 
 def get_object(path: str):
     key = init_storage()
-    resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=60)
+    if not key:
+        return b"", "application/octet-stream"
+    resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=30)
     if resp.status_code == 404:
         key = init_storage(force=True)
-        resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=60)
+        if key:
+            resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=30)
     resp.raise_for_status()
     return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
 
@@ -95,10 +115,13 @@ def create_access_token(user_id: str, email: str) -> str:
 
 
 def get_client_ip(request: Request) -> str:
-    forwarded = request.headers.get("X-Forwarded-For", "")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    client_host = request.client.host if request.client else "unknown"
+    # Only trust X-Forwarded-For if client_host is in trusted local proxies
+    if client_host in TRUSTED_PROXIES:
+        forwarded = request.headers.get("X-Forwarded-For", "")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+    return client_host
 
 
 async def get_current_admin(request: Request) -> dict:
@@ -151,6 +174,9 @@ class SettingsUpdate(BaseModel):
     nib_image_url: str
 
 
+# ---------- Router ----------
+api_router = APIRouter(prefix="/api")
+
 # ---------- Auth ----------
 
 MAX_ATTEMPTS = 5
@@ -195,7 +221,7 @@ async def me(user: dict = Depends(get_current_admin)):
 @api_router.post("/auth/change-password")
 async def change_password(body: ChangePasswordInput, user: dict = Depends(get_current_admin)):
     full_user = await db.users.find_one({"id": user["id"]})
-    if not verify_password(body.current_password, full_user["password_hash"]):
+    if not full_user or not verify_password(body.current_password, full_user["password_hash"]):
         raise HTTPException(status_code=400, detail="Password saat ini salah")
     if len(body.new_password) < 8:
         raise HTTPException(status_code=400, detail="Password baru minimal 8 karakter")
@@ -249,56 +275,127 @@ async def update_settings(body: SettingsUpdate, user: dict = Depends(get_current
 
 # ---------- Files ----------
 
-ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
-MAX_FILE_SIZE = 8 * 1024 * 1024
-
-
 @api_router.post("/upload")
-async def upload_image(file: UploadFile = File(...), user: dict = Depends(get_current_admin)):
+async def upload_image(
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_admin)
+):
     content_type = file.content_type or "application/octet-stream"
+
     if content_type not in ALLOWED_IMAGE_TYPES:
-        raise HTTPException(status_code=400, detail="Hanya file gambar (JPG/PNG/WebP/GIF) yang diperbolehkan")
-    data = await file.read()
-    if len(data) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="Ukuran file maksimal 8MB")
-    ext = file.filename.split(".")[-1].lower() if "." in (file.filename or "") else "jpg"
+        raise HTTPException(
+            status_code=400,
+            detail="Hanya file gambar (JPG/PNG/WebP/GIF) yang diperbolehkan"
+        )
+
+    # Validate extension
+    original_filename = file.filename or ""
+    ext = (original_filename.rsplit(".", 1)[-1].lower() if "." in original_filename else "jpg")
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ekstensi .{ext} tidak diperbolehkan. Gunakan format JPG, PNG, WEBP, atau GIF."
+        )
+
+    # Read chunked to prevent memory exhaustion / DoS
+    data = bytearray()
+    chunk_size = 1024 * 1024  # 1MB chunks
+    while True:
+        chunk = await file.read(chunk_size)
+        if not chunk:
+            break
+        data.extend(chunk)
+        if len(data) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=400,
+                detail="Ukuran file maksimal 8MB"
+            )
+
+    file_bytes = bytes(data)
     file_id = str(uuid.uuid4())
-    path = f"{APP_NAME}/uploads/{file_id}.{ext}"
+    stored_filename = f"{file_id}.{ext}"
+    local_path = (UPLOAD_DIR / stored_filename).resolve()
+
+    # Guard path traversal
+    if not local_path.is_relative_to(UPLOAD_DIR):
+        raise HTTPException(status_code=403, detail="Akses direktori ditolak")
+
     try:
-        result = put_object(path, data, content_type)
+        local_path.write_bytes(file_bytes)
     except Exception as e:
-        logger.error(f"Storage upload failed: {e}")
-        raise HTTPException(status_code=502, detail="Upload ke storage gagal, coba lagi")
+        logger.error(f"Local upload failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Gagal menyimpan file"
+        )
+
     await db.files.insert_one({
         "id": file_id,
-        "storage_path": result["path"],
+        "storage_path": stored_filename,
         "original_filename": file.filename,
         "content_type": content_type,
-        "size": result.get("size", len(data)),
+        "size": len(file_bytes),
         "is_deleted": False,
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
-    return {"id": file_id, "url": f"/api/files/{file_id}"}
+
+    return {
+        "id": file_id,
+        "url": f"/api/files/{file_id}"
+    }
 
 
 @api_router.get("/files/{file_id}")
 async def serve_file(file_id: str):
-    record = await db.files.find_one({"id": file_id, "is_deleted": False})
+    # Only allow valid uuid string characters for file_id
+    if not file_id or not all(c.isalnum() or c == '-' for c in file_id):
+        raise HTTPException(status_code=400, detail="Invalid file ID format")
+
+    record = await db.files.find_one({
+        "id": file_id,
+        "is_deleted": False
+    })
+
     if not record:
-        raise HTTPException(status_code=404, detail="File not found")
+        raise HTTPException(
+            status_code=404,
+            detail="File not found"
+        )
+
+    storage_path = record.get("storage_path", "")
+    local_path = (UPLOAD_DIR / storage_path).resolve()
+
+    # Path traversal protection
+    if not local_path.is_relative_to(UPLOAD_DIR):
+        raise HTTPException(status_code=403, detail="Akses direktori dilarang")
+
+    if not local_path.exists() or not local_path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail="File not found"
+        )
+
     try:
-        data, content_type = get_object(record["storage_path"])
+        data = local_path.read_bytes()
+        content_type = record.get(
+            "content_type",
+            "application/octet-stream"
+        )
     except Exception as e:
-        logger.error(f"Storage fetch failed: {e}")
-        raise HTTPException(status_code=502, detail="Gagal mengambil file")
+        logger.error(f"Local file read failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Gagal mengambil file"
+        )
+
     return Response(
         content=data,
-        media_type=record.get("content_type", content_type),
-        headers={"Cache-Control": "public, max-age=86400"},
+        media_type=content_type,
+        headers={"Cache-Control": "public, max-age=86400"}
     )
 
 
-# ---------- Seed ----------
+# ---------- Seed Data ----------
 
 DEFAULT_SERVICES = [
     {
@@ -386,8 +483,8 @@ DEFAULT_SERVICES = [
 
 
 async def seed():
-    admin_email = os.environ['ADMIN_EMAIL'].lower()
-    admin_password = os.environ['ADMIN_PASSWORD']
+    admin_email = os.environ.get('ADMIN_EMAIL', 'admin@nusapratama.com').lower()
+    admin_password = os.environ.get('ADMIN_PASSWORD', 'admin123_change_me')
     existing = await db.users.find_one({"email": admin_email})
     if existing is None:
         other_admin = await db.users.find_one({"role": "admin"})
@@ -435,32 +532,44 @@ async def seed():
     await db.services.create_index("key", unique=True)
 
 
-@app.on_event("startup")
-async def on_startup():
+@api_router.get("/")
+async def root():
+    return {"message": "PT Nusa Pratama Solution API"}
+
+
+# ---------- Lifespan Context Manager ----------
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup actions
     await seed()
     try:
         init_storage()
         logger.info("Storage initialized")
     except Exception as e:
         logger.error(f"Storage init failed: {e}")
+    yield
+    # Shutdown actions
+    client.close()
+    logger.info("Database client closed")
 
 
-@api_router.get("/")
-async def root():
-    return {"message": "PT Nusa Pratama Solution API"}
+# ---------- App Definition ----------
 
+app = FastAPI(title="PT Nusa Pratama Solution API", lifespan=lifespan)
 
-app.include_router(api_router)
+# Setup CORS immediately after app initialization
+raw_cors = os.environ.get('CORS_ORIGINS', 'http://localhost:3000')
+cors_origins = [origin.strip() for origin in raw_cors.split(',') if origin.strip() and origin.strip() != "*"]
+if not cors_origins:
+    cors_origins = ["http://localhost:3000"]
 
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=cors_origins,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
+app.include_router(api_router)
